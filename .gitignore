@@ -9,3 +9,5 @@ __pycache__/
 
 # Ignorar pastas de configuração do VS Code
 .vscode/
+
+netguard.db
