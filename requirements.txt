@@ -3,3 +3,6 @@ rich==13.7.1
 sqlmodel
 bcrypt
 python-jose[cryptography]
+fastapi
+uvicorn[standard]
+python-multipart
