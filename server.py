@@ -9,17 +9,21 @@ ScannerEngine/SnifferModule já existentes.
 
 Para rodar:
     uvicorn server:app --reload
+    no navegador o IP que aparece no terminal + /docs
 """
 
 from datetime import timedelta
+from typing import List
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from database import get_session, create_db_and_tables
-from db_models import User
+from db_models import User, Device, ScanReport
 from auth import verify_password, create_access_token, decode_access_token
+from scan_service import run_scan_and_persist
 
 app = FastAPI(title="NetGuard Cyber Defense Web Engine")
 
@@ -104,3 +108,43 @@ def read_current_user(current_user: User = Depends(get_current_user)):
         "role": current_user.role,
         "created_at": current_user.created_at,
     }
+
+
+# ---------------------------------------------------------------------
+# Auditoria interna (ARP + port scan, agrupado por porta com MITRE + score)
+# ---------------------------------------------------------------------
+
+class ScanRequest(BaseModel):
+    target_range: str  # ex: "192.168.0.0/24"
+
+
+@app.post("/scan")
+def scan_network(
+    payload: ScanRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """
+    Executa a auditoria interna (RF01 + RF02 do CLI) na faixa de IPs
+    informada, salva dispositivos e relatório no banco, e retorna o
+    resultado já agrupado por porta, com correlação MITRE e score de risco.
+    """
+    return run_scan_and_persist(payload.target_range, session)
+
+
+@app.get("/devices", response_model=List[Device])
+def list_devices(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Lista todos os dispositivos já mapeados em varreduras anteriores."""
+    return session.exec(select(Device)).all()
+
+
+@app.get("/reports", response_model=List[ScanReport])
+def list_reports(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Lista o histórico de relatórios de varredura (mais recentes primeiro)."""
+    return session.exec(select(ScanReport).order_by(ScanReport.created_at.desc())).all()
