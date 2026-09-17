@@ -1,22 +1,25 @@
 """
 server.py
 
-Servidor web do NetGuard (FastAPI).
+Servidor web do NetGuard (FastAPI). Arquivo novo — não substitui o
+main.py original (que continua funcionando como a CLI do Projeto 1).
 
-Por enquanto expõe só a rota de login. Nos próximos passos, as rotas
-de scan/devices/reports/sniffer vão ser adicionadas aqui, chamando o
-ScannerEngine/SnifferModule já existentes.
+Sprint 2: rotas de API (/login, /me, /scan, /devices, /reports).
+Sprint 3: páginas web (front-end) servidas via Jinja2, consumindo
+essas mesmas rotas de API via fetch no navegador.
 
 Para rodar:
     uvicorn server:app --reload
-    no navegador o IP que aparece no terminal + /docs
 """
 
 from datetime import timedelta
 from typing import List
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -26,6 +29,9 @@ from auth import verify_password, create_access_token, decode_access_token
 from scan_service import run_scan_and_persist
 
 app = FastAPI(title="NetGuard Cyber Defense Web Engine")
+
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
+templates = Jinja2Templates(directory="web/templates")
 
 # Aponta para a rota de login; usado pelo Swagger (/docs) e para
 # extrair o token do header "Authorization: Bearer <token>".
@@ -39,7 +45,7 @@ def on_startup():
 
 
 # ---------------------------------------------------------------------
-# Login
+# Login (API)
 # ---------------------------------------------------------------------
 
 @app.post("/login")
@@ -50,7 +56,8 @@ def login(
     """
     Autentica usuário/senha e retorna um token JWT.
     Compatível com o padrão OAuth2 (form-urlencoded: username, password),
-    o que permite testar direto pela tela do Swagger em /docs.
+    o que permite testar direto pela tela do Swagger em /docs, e também
+    é chamado via fetch pela página de login do front-end.
     """
     user = session.exec(select(User).where(User.username == form_data.username)).first()
 
@@ -66,7 +73,7 @@ def login(
 
 
 # ---------------------------------------------------------------------
-# Dependência de autenticação (para proteger rotas futuras)
+# Dependência de autenticação (para proteger rotas de API)
 # ---------------------------------------------------------------------
 
 def get_current_user(
@@ -96,13 +103,9 @@ def get_current_user(
     return user
 
 
-# ---------------------------------------------------------------------
-# Rota de teste, só para validar que a autenticação está funcionando
-# ---------------------------------------------------------------------
-
 @app.get("/me")
 def read_current_user(current_user: User = Depends(get_current_user)):
-    """Retorna os dados do usuário logado. Serve só para testar o token."""
+    """Retorna os dados do usuário logado. Usado pela página de login e pela sidebar."""
     return {
         "username": current_user.username,
         "role": current_user.role,
@@ -148,3 +151,29 @@ def list_reports(
 ):
     """Lista o histórico de relatórios de varredura (mais recentes primeiro)."""
     return session.exec(select(ScanReport).order_by(ScanReport.created_at.desc())).all()
+
+
+# ---------------------------------------------------------------------
+# Páginas web (front-end) — Sprint 3
+# ---------------------------------------------------------------------
+# Importante: estas rotas só entregam o "esqueleto" HTML. A autenticação
+# de verdade e a busca de dados acontecem no navegador, via JavaScript
+# (fetch + token JWT no localStorage) — por isso elas não usam
+# Depends(get_current_user): a página carrega, e o auth.js decide se
+# redireciona pro /login ou não.
+
+@app.get("/")
+def root():
+    return RedirectResponse(url="/painel")
+
+
+@app.get("/login")
+def login_page(request: Request):
+    return templates.TemplateResponse(request=request, name="login.html", context={})
+
+
+@app.get("/painel")
+def painel_scan_page(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="dashboard.html", context={"active": "scan"}
+    )
