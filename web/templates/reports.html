@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Relatórios{% endblock %}
+
+{% block extra_head %}
+<style>
+  .ng-report-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+  .ng-report-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.9rem 1.1rem;
+    cursor: pointer;
+    background: var(--surface);
+  }
+  .ng-report-summary:hover { background: var(--surface-2); }
+  .ng-report-meta { display: flex; gap: 1.25rem; align-items: center; }
+  .ng-report-target { font-family: var(--font-mono); font-weight: 600; }
+  .ng-report-date { color: var(--text-muted); font-size: 0.82rem; }
+  .ng-report-body {
+    display: none;
+    padding: 0 1.1rem 1rem;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .ng-report-item.open .ng-report-body { display: block; }
+  .ng-report-chevron { transition: transform 0.15s ease; color: var(--text-muted); }
+  .ng-report-item.open .ng-report-chevron { transform: rotate(90deg); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ng-page-header">
+  <h1>Relatórios</h1>
+  <p>Histórico de varreduras realizadas, mais recentes primeiro.</p>
+</div>
+
+<div id="ng-reports-list"></div>
+<div class="ng-card ng-empty" id="ng-reports-empty" style="display:none;">
+  Nenhum relatório gerado ainda. Rode uma varredura na aba "Varredura".
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Mesma tabela de peso por severidade usada no back-end (scan_service.py),
+  // reaproveitada aqui só para calcular o score de exibição no histórico.
+  const SEVERITY_WEIGHT = { "Alto": 30, "Médio": 15, "Baixo": 5 };
+  const SEVERITY_CLASS = { "Alto": "ng-badge-alto", "Médio": "ng-badge-medio", "Baixo": "ng-badge-baixo" };
+
+  function computeScore(openPorts) {
+    let score = 0;
+    openPorts.forEach((p) => { score += SEVERITY_WEIGHT[p.severidade] || 15; });
+    return Math.min(100, score);
+  }
+
+  function formatDate(iso) {
+    return new Date(iso).toLocaleString("pt-BR");
+  }
+
+  function buildReportItem(report) {
+    const score = computeScore(report.open_ports || []);
+    const mitreByPort = {};
+    (report.mitre_tactics || []).forEach((m) => { mitreByPort[m.porta] = m; });
+
+    const rowsHtml = (report.open_ports || []).map((p) => {
+      const mitre = mitreByPort[p.porta];
+      const badgeClass = SEVERITY_CLASS[p.severidade] || "ng-badge-medio";
+      return `
+        <tr>
+          <td class="mono">${p.porta}</td>
+          <td>${p.servico}${mitre ? `<div class="ng-mitre-box"><b>${mitre.mitre_tactica}</b> · ${mitre.mitre_tecnica}<br>${mitre.impacto_seguranca}</div>` : ""}</td>
+          <td><span class="ng-badge ${badgeClass}">${p.severidade}</span></td>
+          <td class="mono">${p.dispositivos_afetados.join(", ")}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const item = document.createElement("div");
+    item.className = "ng-report-item";
+    item.innerHTML = `
+      <div class="ng-report-summary">
+        <div class="ng-report-meta">
+          <span class="ng-report-target">${report.target_ip}</span>
+          <span class="ng-report-date">${formatDate(report.created_at)}</span>
+          <span class="ng-badge ${score >= 60 ? "ng-badge-alto" : score >= 30 ? "ng-badge-medio" : "ng-badge-baixo"}">score ${score}</span>
+        </div>
+        <span class="ng-report-chevron">▸</span>
+      </div>
+      <div class="ng-report-body">
+        <table class="ng-table">
+          <thead>
+            <tr><th>Porta</th><th>Serviço</th><th>Severidade</th><th>Dispositivos afetados</th></tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+
+    item.querySelector(".ng-report-summary").addEventListener("click", () => {
+      item.classList.toggle("open");
+    });
+
+    return item;
+  }
+
+  async function loadReports() {
+    const list = document.getElementById("ng-reports-list");
+    const empty = document.getElementById("ng-reports-empty");
+
+    const response = await ngFetch("/reports");
+    const reports = await response.json();
+
+    if (reports.length === 0) {
+      empty.style.display = "block";
+      return;
+    }
+
+    reports.forEach((r) => list.appendChild(buildReportItem(r)));
+  }
+
+  loadReports();
+</script>
+{% endblock %}

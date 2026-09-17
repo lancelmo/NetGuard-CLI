@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Varredura{% endblock %}
+
+{% block extra_head %}
+<style>
+  .ng-scan-form {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .ng-scan-form .ng-field { flex: 1; min-width: 220px; }
+
+  .ng-radar-box {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1rem;
+  }
+  .ng-radar-box.active { display: flex; }
+
+  .ng-radar {
+    position: relative;
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+  }
+  .ng-radar::before, .ng-radar::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+  }
+  .ng-radar::before { inset: 28px; }
+  .ng-radar::after { inset: 56px; }
+
+  .ng-radar-sweep-small {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(53,208,160,0.45), transparent 32%);
+    animation: ng-sweep-small 2.2s linear infinite;
+  }
+  @keyframes ng-sweep-small { to { transform: rotate(360deg); } }
+
+  .ng-radar-status {
+    margin-top: 1.1rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .ng-metrics-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 700px) {
+    .ng-metrics-row { grid-template-columns: 1fr; }
+  }
+
+  .ng-mitre-box {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    margin-top: 0.4rem;
+  }
+  .ng-mitre-box b { color: var(--text); }
+
+  #ng-results { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ng-page-header">
+  <h1>Varredura de rede</h1>
+  <p>Auditoria interna — descoberta de dispositivos e portas expostas na rede local.</p>
+</div>
+
+<div class="ng-card">
+  <form class="ng-scan-form" id="ng-scan-form">
+    <div class="ng-field">
+      <label class="form-label" for="target_range">Faixa de IP (CIDR)</label>
+      <input type="text" class="form-control mono" id="target_range" placeholder="192.168.0.0/24" required>
+    </div>
+    <button type="submit" class="btn btn-ng-primary" id="ng-scan-btn">Iniciar varredura</button>
+  </form>
+
+  <div class="ng-radar-box" id="ng-radar-box">
+    <div class="ng-radar">
+      <div class="ng-radar-sweep-small"></div>
+    </div>
+    <div class="ng-radar-status" id="ng-radar-status">varrendo a rede...</div>
+  </div>
+
+  <div class="ng-empty" id="ng-empty-state">
+    Nenhuma varredura executada nesta sessão. Informe uma faixa de IP e clique em "Iniciar varredura".
+  </div>
+
+  <div class="alert" style="display:none; background: rgba(255,93,93,0.12); color: var(--danger); border: none; border-radius: 8px; margin-top: 1rem;" id="ng-scan-error"></div>
+</div>
+
+<div id="ng-results">
+  <div class="ng-metrics-row" style="margin-top: 1rem;">
+    <div class="ng-metric">
+      <div class="ng-metric-label">Score de risco</div>
+      <div class="ng-metric-value" id="ng-metric-score">—</div>
+    </div>
+    <div class="ng-metric">
+      <div class="ng-metric-label">Dispositivos encontrados</div>
+      <div class="ng-metric-value" id="ng-metric-devices">—</div>
+    </div>
+    <div class="ng-metric">
+      <div class="ng-metric-label">Portas expostas</div>
+      <div class="ng-metric-value" id="ng-metric-ports">—</div>
+    </div>
+  </div>
+
+  <div class="ng-card">
+    <table class="ng-table">
+      <thead>
+        <tr>
+          <th>Porta</th>
+          <th>Serviço</th>
+          <th>Severidade</th>
+          <th>Dispositivos afetados</th>
+        </tr>
+      </thead>
+      <tbody id="ng-ports-tbody"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/scan.js"></script>
+{% endblock %}

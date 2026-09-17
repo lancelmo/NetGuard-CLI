@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Dispositivos{% endblock %}
+
+{% block content %}
+<div class="ng-page-header">
+  <h1>Dispositivos</h1>
+  <p>Todos os dispositivos já mapeados em varreduras anteriores.</p>
+</div>
+
+<div class="ng-card">
+  <table class="ng-table">
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>MAC</th>
+        <th>Fabricante</th>
+        <th>Visto por último</th>
+      </tr>
+    </thead>
+    <tbody id="ng-devices-tbody"></tbody>
+  </table>
+  <div class="ng-empty" id="ng-devices-empty" style="display:none;">
+    Nenhum dispositivo encontrado ainda. Rode uma varredura na aba "Varredura".
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleString("pt-BR");
+  }
+
+  async function loadDevices() {
+    const tbody = document.getElementById("ng-devices-tbody");
+    const empty = document.getElementById("ng-devices-empty");
+
+    const response = await ngFetch("/devices");
+    const devices = await response.json();
+
+    if (devices.length === 0) {
+      empty.style.display = "block";
+      return;
+    }
+
+    devices.forEach((d) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td class="mono">${d.ip_address}</td>
+        <td class="mono">${d.mac_address}</td>
+        <td>${d.vendor || "Desconhecido"}</td>
+        <td class="mono">${formatDate(d.last_seen)}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  loadDevices();
+</script>
+{% endblock %}

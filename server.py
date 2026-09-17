@@ -177,3 +177,17 @@ def painel_scan_page(request: Request):
     return templates.TemplateResponse(
         request=request, name="dashboard.html", context={"active": "scan"}
     )
+
+
+@app.get("/painel/dispositivos")
+def painel_devices_page(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="devices.html", context={"active": "devices"}
+    )
+
+
+@app.get("/painel/relatorios")
+def painel_reports_page(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="reports.html", context={"active": "reports"}
+    )
