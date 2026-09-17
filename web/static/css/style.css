@@ -1,0 +1,353 @@
+/* =====================================================================
+   NetGuard Web Engine — estilo base (identidade "painel de operações")
+   ===================================================================== */
+
+:root {
+  --bg: #0B1220;
+  --surface: #131B2E;
+  --surface-2: #1A2438;
+  --border: #23304A;
+  --text: #E7ECF3;
+  --text-muted: #8B97AC;
+
+  --accent: #35D0A0;
+  --accent-strong: #21B98A;
+  --danger: #FF5D5D;
+  --warning: #FFB020;
+  --info: #4FA8FF;
+
+  --font-display: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
+
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-strong); }
+
+.mono { font-family: var(--font-mono); }
+
+/* ---------------------------------------------------------------------
+   Layout: shell com sidebar fixa + conteúdo
+   --------------------------------------------------------------------- */
+
+.ng-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.ng-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.ng-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 1.25rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+}
+
+.ng-brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  flex-shrink: 0;
+}
+
+.ng-brand-text {
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+
+.ng-brand-text small {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.ng-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 0.6rem;
+}
+
+.ng-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ng-nav-link:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.ng-nav-link.active {
+  background: rgba(53, 208, 160, 0.12);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.ng-nav-icon {
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.ng-sidebar-footer {
+  margin-top: auto;
+  padding: 0.75rem 1.25rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.ng-user-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  padding-top: 0.75rem;
+}
+
+.ng-logout-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.ng-logout-btn:hover { color: var(--danger); }
+
+.ng-main {
+  flex: 1;
+  min-width: 0;
+  padding: 1.75rem 2rem 3rem;
+}
+
+.ng-page-header {
+  margin-bottom: 1.5rem;
+}
+
+.ng-page-header h1 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 0.2rem;
+}
+
+.ng-page-header p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------
+   Cards / painéis
+   --------------------------------------------------------------------- */
+
+.ng-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.ng-card + .ng-card { margin-top: 1rem; }
+
+.ng-metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+.ng-metric-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+
+.ng-metric-value {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------
+   Badges de severidade
+   --------------------------------------------------------------------- */
+
+.ng-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.ng-badge-alto { background: rgba(255, 93, 93, 0.15); color: var(--danger); }
+.ng-badge-medio { background: rgba(255, 176, 32, 0.15); color: var(--warning); }
+.ng-badge-baixo { background: rgba(53, 208, 160, 0.15); color: var(--accent); }
+
+/* ---------------------------------------------------------------------
+   Formulários (Bootstrap override sutil)
+   --------------------------------------------------------------------- */
+
+.form-control, .form-select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.form-control:focus, .form-select:focus {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: 0 0 0 0.2rem rgba(53, 208, 160, 0.15);
+}
+
+.form-control::placeholder { color: var(--text-muted); opacity: 0.7; }
+
+.form-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.btn-ng-primary {
+  background: var(--accent);
+  border: none;
+  color: #06231A;
+  font-weight: 600;
+  padding: 0.55rem 1.3rem;
+  border-radius: var(--radius);
+}
+.btn-ng-primary:hover { background: var(--accent-strong); color: #06231A; }
+.btn-ng-primary:disabled { opacity: 0.6; }
+
+/* ---------------------------------------------------------------------
+   Tabelas
+   --------------------------------------------------------------------- */
+
+.ng-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+}
+
+.ng-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: none;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ng-table td {
+  padding: 0.65rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.ng-table tr:last-child td { border-bottom: none; }
+
+.ng-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* ---------------------------------------------------------------------
+   Responsivo — sidebar vira barra inferior no mobile
+   --------------------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .ng-shell {
+    flex-direction: column;
+  }
+
+  .ng-sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 0.4rem 0.5rem;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    z-index: 40;
+  }
+
+  .ng-brand, .ng-sidebar-footer { display: none; }
+
+  .ng-nav {
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+    padding: 0;
+  }
+
+  .ng-nav-link {
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.68rem;
+    padding: 0.4rem 0.3rem;
+    text-align: center;
+  }
+
+  .ng-nav-icon { font-size: 1.05rem; }
+
+  .ng-main {
+    padding: 1.25rem 1rem 5.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ng-metric-value { font-size: 1.3rem; }
+  .ng-page-header h1 { font-size: 1.2rem; }
+}

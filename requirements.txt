@@ -6,3 +6,4 @@ python-jose[cryptography]
 fastapi
 uvicorn[standard]
 python-multipart
+jinja2

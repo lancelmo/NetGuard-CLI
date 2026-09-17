@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar · NetGuard</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+
+  <style>
+    .ng-login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ng-radar-bg {
+      position: absolute;
+      width: 640px;
+      height: 640px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.5;
+    }
+    .ng-radar-bg::before, .ng-radar-bg::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+    }
+    .ng-radar-bg::before { inset: 90px; }
+    .ng-radar-bg::after { inset: 180px; }
+
+    .ng-radar-sweep {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, rgba(53,208,160,0.35), transparent 35%);
+      animation: ng-sweep 4s linear infinite;
+    }
+
+    @keyframes ng-sweep {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ng-radar-sweep { animation: none; }
+    }
+
+    .ng-login-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 360px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 2rem 1.75rem;
+    }
+
+    .ng-login-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .ng-login-error {
+      display: none;
+      background: rgba(255, 93, 93, 0.12);
+      color: var(--danger);
+      font-size: 0.82rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="ng-login-wrap">
+  <div class="ng-radar-bg">
+    <div class="ng-radar-sweep"></div>
+  </div>
+
+  <div class="ng-login-card">
+    <div class="ng-login-brand">
+      <span class="ng-brand-dot"></span>
+      <span class="ng-brand-text">
+        NetGuard
+        <small>Cyber Defense Web Engine</small>
+      </span>
+    </div>
+
+    <div class="ng-login-error" id="ng-login-error">Usuário ou senha incorretos.</div>
+
+    <form id="ng-login-form">
+      <div class="mb-3">
+        <label class="form-label" for="username">Usuário</label>
+        <input type="text" class="form-control" id="username" autocomplete="username" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="password">Senha</label>
+        <input type="password" class="form-control" id="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-ng-primary w-100" id="ng-login-btn">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById("ng-login-form");
+  const errorBox = document.getElementById("ng-login-error");
+  const submitBtn = document.getElementById("ng-login-btn");
+
+  // Se já existe sessão válida, pula direto pro painel.
+  if (localStorage.getItem("netguard_token")) {
+    window.location.href = "/painel";
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    errorBox.style.display = "none";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Entrando...";
+
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    const body = new URLSearchParams();
+    body.set("username", username);
+    body.set("password", password);
+
+    try {
+      const response = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+
+      if (!response.ok) {
+        throw new Error("Credenciais inválidas");
+      }
+
+      const data = await response.json();
+      localStorage.setItem("netguard_token", data.access_token);
+
+      // Busca os dados do usuário logado (/me) pra exibir na sidebar.
+      const meResponse = await fetch("/me", {
+        headers: { Authorization: `Bearer ${data.access_token}` },
+      });
+      const user = await meResponse.json();
+      localStorage.setItem("netguard_user", JSON.stringify(user));
+
+      window.location.href = "/painel";
+    } catch (err) {
+      errorBox.style.display = "block";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Entrar";
+    }
+  });
+</script>
+</body>
+</html>
