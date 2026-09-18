@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Sniffer{% endblock %}
+
+{% block extra_head %}
+<style>
+  .ng-sniffer-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .ng-sniffer-status {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .ng-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+  }
+  .ng-status-dot.live {
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    animation: ng-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes ng-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  .ng-live-row {
+    animation: ng-row-in 0.25s ease-out;
+  }
+  @keyframes ng-row-in {
+    from { background: rgba(53,208,160,0.18); }
+    to { background: transparent; }
+  }
+
+  #ng-sniffer-feed { max-height: 420px; overflow-y: auto; }
+
+  .ng-page-header ~ .ng-card .ng-metrics-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  @media (max-width: 900px) {
+    .ng-page-header ~ .ng-card .ng-metrics-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ng-page-header">
+  <h1>Sniffer ao vivo</h1>
+  <p>Monitoramento contínuo de tráfego — exibe apenas eventos inseguros ou críticos, agregados por tipo.</p>
+</div>
+
+<div class="ng-card">
+  <div class="ng-sniffer-controls">
+    <select class="form-select" id="ng-sniffer-mode" style="max-width: 220px;">
+      <option value="alerts">Somente tráfego inseguro</option>
+      <option value="all">Tráfego geral (todo classificado)</option>
+    </select>
+    <button class="btn btn-ng-primary" id="ng-sniffer-toggle">Iniciar monitoramento</button>
+    <div class="ng-sniffer-status">
+      <span class="ng-status-dot" id="ng-status-dot"></span>
+      <span id="ng-status-text">parado</span>
+    </div>
+  </div>
+
+  <div class="ng-metrics-row">
+    <div class="ng-metric">
+      <div class="ng-metric-label">Eventos nesta sessão</div>
+      <div class="ng-metric-value" id="ng-count-total">0</div>
+    </div>
+    <div class="ng-metric">
+      <div class="ng-metric-label">Inseguro (HTTP/FTP)</div>
+      <div class="ng-metric-value" id="ng-count-inseguro">0</div>
+    </div>
+    <div class="ng-metric">
+      <div class="ng-metric-label">Crítico (SMB)</div>
+      <div class="ng-metric-value" id="ng-count-critico">0</div>
+    </div>
+    <div class="ng-metric">
+      <div class="ng-metric-label">Seguro (HTTPS/SSH)</div>
+      <div class="ng-metric-value" id="ng-count-seguro">0</div>
+    </div>
+  </div>
+</div>
+
+<div class="ng-card">
+  <table class="ng-table">
+    <thead>
+      <tr>
+        <th>Hora</th>
+        <th>Origem</th>
+        <th>Destino</th>
+        <th>Protocolo</th>
+        <th>Status</th>
+        <th>Fabricante</th>
+      </tr>
+    </thead>
+    <tbody id="ng-sniffer-feed"></tbody>
+  </table>
+  <div class="ng-empty" id="ng-sniffer-empty">
+    Clique em "Iniciar monitoramento" para começar a capturar tráfego inseguro em tempo real.
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/sniffer.js"></script>
+{% endblock %}

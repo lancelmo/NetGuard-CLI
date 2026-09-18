@@ -53,10 +53,6 @@
       to { transform: rotate(360deg); }
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .ng-radar-sweep { animation: none; }
-    }
-
     .ng-login-card {
       position: relative;
       z-index: 1;
@@ -107,7 +103,7 @@
     <form id="ng-login-form">
       <div class="mb-3">
         <label class="form-label" for="username">Usuário</label>
-        <input type="text" class="form-control" id="username" autocomplete="username" required>
+        <input type="text" class="form-control" id="username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required>
       </div>
       <div class="mb-3">
         <label class="form-label" for="password">Senha</label>
