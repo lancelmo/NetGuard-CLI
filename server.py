@@ -14,8 +14,11 @@ Para rodar:
 
 from datetime import timedelta
 from typing import List
+import asyncio
+import queue
+import threading
 
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, WebSocket, WebSocketDisconnect
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -23,10 +26,11 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from database import get_session, create_db_and_tables
-from db_models import User, Device, ScanReport
+from database import get_session, create_db_and_tables, engine
+from db_models import User, Device, ScanReport, SnifferLog
 from auth import verify_password, create_access_token, decode_access_token
 from scan_service import run_scan_and_persist
+from sniffer_service import WebSnifferSession
 
 app = FastAPI(title="NetGuard Cyber Defense Web Engine")
 
@@ -191,3 +195,58 @@ def painel_reports_page(request: Request):
     return templates.TemplateResponse(
         request=request, name="reports.html", context={"active": "reports"}
     )
+
+
+@app.get("/painel/sniffer")
+def painel_sniffer_page(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="sniffer.html", context={"active": "sniffer"}
+    )
+
+
+# ---------------------------------------------------------------------
+# Sniffer ao vivo (WebSocket)
+# ---------------------------------------------------------------------
+# O WebSocket do navegador não permite enviar o header Authorization,
+# então o token vem como query string (?token=...) e é validado à mão
+# aqui, em vez de usar o Depends(get_current_user) das rotas HTTP.
+
+@app.websocket("/ws/sniffer")
+async def ws_sniffer(websocket: WebSocket, token: str = "", mode: str = "alerts"):
+    payload = decode_access_token(token)
+    if payload is None:
+        await websocket.close(code=4401)
+        return
+
+    await websocket.accept()
+
+    session = WebSnifferSession(mode=mode)
+    thread = threading.Thread(target=session.run, daemon=True)
+    thread.start()
+
+    try:
+        while True:
+            try:
+                event = await asyncio.to_thread(session.alert_queue.get, True, 1.0)
+            except queue.Empty:
+                continue
+
+            # Só o que é alerta de verdade (inseguro/crítico) vai pro
+            # histórico no banco, mesmo no modo "tráfego geral" — a
+            # tabela sniffer_logs continua sendo um log de segurança,
+            # não um dump de todo pacote.
+            if event["is_alert"]:
+                with Session(engine) as db_session:
+                    db_session.add(SnifferLog(
+                        source_ip=event["source_ip"],
+                        destination_ip=event["destination_ip"],
+                        protocol=event["protocol"],
+                        alert_type=event["alert_type"],
+                    ))
+                    db_session.commit()
+
+            await websocket.send_json(event)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        session.stop()

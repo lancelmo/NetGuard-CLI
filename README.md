@@ -1,6 +1,6 @@
 # NetGuard Cyber Defense Network Engine v1.2 → Web Engine v2.0 (Projeto 2)
 
-Este projeto é uma ferramenta de auditoria de segurança e monitoramento de ativos de rede local, desenvolvida como projeto prático para a disciplina de **Projeto 1 - Engenharia de Software** (versão CLI, v1.2) e evoluída na disciplina de **Projeto 2 - Engenharia de Software** para uma plataforma web completa (Web Engine, v2.0 — em desenvolvimento).
+Este projeto é uma ferramenta de auditoria de segurança e monitoramento de ativos de rede local, desenvolvida como projeto prático para a disciplina de **Projeto 1 - Engenharia de Software** (versão CLI, v1.2) e evoluída na disciplina de **Projeto 2 - Engenharia de Software** para uma plataforma web completa (Web Engine, v2.0).
 
 O sistema realiza varreduras ativas na rede, identifica serviços expostos coletando assinaturas de servidores (Banner Grabbing) e correlaciona as vulnerabilidades encontradas diretamente com a matriz global **MITRE ATT&CK v14** e o comportamento do **Nikto Spider**.
 
@@ -30,9 +30,10 @@ O projeto foi construído utilizando o conceito de ambiente virtual isolado (`ve
 - **SQLModel (`pip install sqlmodel`)**: ORM que une SQLAlchemy + Pydantic, usado para modelar e persistir os dados (usuários, dispositivos, relatórios) em SQLite.
 - **bcrypt (`pip install bcrypt`)**: Geração e verificação de hash de senha dos usuários.
 - **python-jose[cryptography] (`pip install python-jose[cryptography]`)**: Geração e validação de tokens JWT de sessão.
-- **FastAPI (`pip install fastapi`)**: Framework assíncrono que expõe a API web da aplicação.
-- **Uvicorn (`pip install "uvicorn[standard]"`)**: Servidor ASGI usado para rodar a aplicação FastAPI.
+- **FastAPI (`pip install fastapi`)**: Framework assíncrono que expõe a API e as páginas web da aplicação.
+- **Uvicorn (`pip install "uvicorn[standard]"`)**: Servidor ASGI usado para rodar a aplicação FastAPI (inclui suporte a WebSocket, usado pelo sniffer ao vivo).
 - **python-multipart (`pip install python-multipart`)**: Exigido pelo FastAPI para processar o formulário de login (`OAuth2PasswordRequestForm`).
+- **Jinja2 (`pip install jinja2`)**: Motor de templates usado para renderizar as páginas do front-end (login, dashboard, dispositivos, relatórios, sniffer).
 
 ---
 
@@ -114,9 +115,9 @@ sudo ./venv/bin/python main.py
 
 ---
 
-## 🌐 Web Engine (Projeto 2 — em desenvolvimento)
+## 🌐 Web Engine (Projeto 2)
 
-A evolução para plataforma web expõe as mesmas capacidades de auditoria através de uma API (FastAPI), com persistência em banco de dados e autenticação. Progresso atual: **Sprint 2 concluída** (banco de dados, autenticação, e migração do motor de varredura para rotas web).
+A evolução para plataforma web expõe as mesmas capacidades de auditoria através de uma API (FastAPI) e um front-end web completo, com persistência em banco de dados e autenticação. Progresso atual: **Sprint 2 e Sprint 3 concluídas** (banco de dados, autenticação, motor de varredura migrado para rotas web, e interface web completa — varredura, dispositivos, relatórios e sniffer ao vivo).
 
 ### Configurar o banco de dados
 
@@ -134,7 +135,7 @@ python auth.py criar_admin
 
 ### Subir o servidor
 
-⚠️ Assim como a CLI, o servidor precisa de privilégios de Administrador (o scan de rede usa Scapy).
+⚠️ Assim como a CLI, o servidor precisa de privilégios de Administrador (o scan de rede e o sniffer usam Scapy).
 
 - No Windows: abra o PowerShell **como Administrador**, ative a venv, e rode:
 
@@ -148,9 +149,33 @@ uvicorn server:app --reload
 sudo ./venv/bin/uvicorn server:app --reload
 ```
 
-O servidor sobe em `http://127.0.0.1:8000`. A documentação interativa (Swagger) fica disponível em `http://127.0.0.1:8000/docs`.
+O servidor sobe em `http://127.0.0.1:8000` e já redireciona para a tela de login.
 
-### Rotas disponíveis
+**Para acessar de outro dispositivo na mesma rede (ex: celular)**, suba com:
+
+```
+uvicorn server:app --reload --host 0.0.0.0
+```
+
+E acesse pelo IP local do computador na rede (ex: `http://192.168.1.176:8000`), em vez de `127.0.0.1`. Pode ser necessário liberar a porta no firewall:
+
+```
+New-NetFirewallRule -DisplayName "NetGuard Dev" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow
+```
+
+A documentação interativa da API (Swagger) continua disponível em `http://127.0.0.1:8000/docs`.
+
+### Páginas do front-end
+
+| Página | Rota | Descrição |
+|---|---|---|
+| Login | `/login` | Autenticação (usuário/senha), token JWT guardado no navegador |
+| Varredura | `/painel` | Executa a auditoria interna com animação de radar durante o scan; resultado agrupado por porta, com MITRE ATT&CK e score de risco |
+| Dispositivos | `/painel/dispositivos` | Lista todos os dispositivos já mapeados |
+| Relatórios | `/painel/relatorios` | Histórico de varreduras, com detalhe expansível por relatório |
+| Sniffer | `/painel/sniffer` | Monitoramento de tráfego em tempo real (WebSocket), com modo "somente alertas" ou "tráfego geral" |
+
+### Rotas de API
 
 | Rota | Método | Autenticação | Descrição |
 |---|---|---|---|
@@ -159,6 +184,7 @@ O servidor sobe em `http://127.0.0.1:8000`. A documentação interativa (Swagger
 | `/scan` | POST | 🔒 | Executa a auditoria interna (ARP + Port Scan) numa faixa de IP (ex: `192.168.1.0/24`), salva no banco e retorna o resultado **agrupado por porta**, com correlação **MITRE ATT&CK** e **score de risco** agregado |
 | `/devices` | GET | 🔒 | Lista os dispositivos já mapeados em varreduras anteriores |
 | `/reports` | GET | 🔒 | Lista o histórico de relatórios de varredura |
+| `/ws/sniffer` | WebSocket | 🔒 (token via query string) | Transmite eventos de tráfego ao vivo (alertas inseguros/críticos, ou tráfego geral conforme o modo escolhido) |
 
 ---
 
@@ -171,12 +197,25 @@ O servidor sobe em `http://127.0.0.1:8000`. A documentação interativa (Swagger
 - `reports.py`: Gerenciador de relatórios (ReportManager). Classifica os dados e exporta uma auditoria em JSON integrada com inteligência contra ameaças baseada no Framework MITRE ATT&CK (RF05).
 - `models.py`: Contém o DTO (DeviceDTO) estruturado para transferência limpa de dados entre módulos.
 
-**Evolução Web (Projeto 2):**
+**Evolução Web — back-end (Projeto 2, Sprint 2):**
 - `database.py`: Conexão SQLModel/SQLite e criação das tabelas.
 - `db_models.py`: Modelos de persistência (`User`, `Device`, `ScanReport`, `SnifferLog`), conforme o esquema ER da especificação.
 - `auth.py`: Hash de senha (bcrypt) e geração/validação de tokens JWT.
-- `server.py`: Servidor FastAPI — rotas de login e das funcionalidades web.
+- `server.py`: Servidor FastAPI — rotas de API, páginas web e o endpoint WebSocket do sniffer.
 - `scan_service.py`: Camada de serviço que conecta o `ScannerEngine`/`ReportManager` originais ao banco de dados, agrupando o resultado do scan por porta e calculando o score de risco.
+- `sniffer_service.py`: Camada de serviço que conecta o `SnifferModule` original ao WebSocket, reaproveitando a identificação de fabricante e filtrando/agregando os eventos antes de enviar ao navegador.
+
+**Evolução Web — front-end (Projeto 2, Sprint 3):**
+- `web/templates/base.html`: Layout base (menu lateral, responsivo) usado por todas as páginas autenticadas.
+- `web/templates/login.html`: Tela de login.
+- `web/templates/dashboard.html`: Tela de varredura, com a animação de radar.
+- `web/templates/devices.html`: Tela de dispositivos.
+- `web/templates/reports.html`: Tela de relatórios.
+- `web/templates/sniffer.html`: Tela do sniffer ao vivo.
+- `web/static/css/style.css`: Identidade visual (paleta, tipografia, layout) do painel.
+- `web/static/js/auth.js`: Gerencia o token JWT no navegador e protege as páginas.
+- `web/static/js/scan.js`: Lógica da tela de varredura (requisição, animação, renderização do resultado).
+- `web/static/js/sniffer.js`: Cliente WebSocket do sniffer (conexão, contadores, lista de eventos ao vivo).
 
 ---
 
@@ -196,5 +235,5 @@ Ao iniciar a aplicação como Administrador, o operador terá acesso a um menu i
 
 - [x] **Sprint 1** — Especificação técnica, arquitetura, modelagem ER e planejamento
 - [x] **Sprint 2** — Back-end e autenticação: banco de dados (SQLModel), autenticação (bcrypt + JWT), servidor FastAPI, migração do `ScannerEngine` para rota web (agrupado por porta + MITRE + score de risco)
-- [ ] **Sprint 3** — Front-end responsivo (Bootstrap/Jinja2), dashboard de dispositivos e scan pela interface
-- [ ] **Sprint 4** — Integração Docker multiplataforma e testes de ponta a ponta
+- [x] **Sprint 3** — Front-end responsivo (Bootstrap/Jinja2): tela de varredura com simulação visual (radar), dispositivos, relatórios e sniffer ao vivo (WebSocket), testado em desktop e mobile
+- [ ] **Sprint 4** — Integração Docker adaptada para a Web Engine, homologação multiplataforma (Windows/Linux) e testes de segurança de ponta a ponta
