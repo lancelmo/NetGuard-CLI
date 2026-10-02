@@ -43,15 +43,27 @@ O NetGuard foi projetado para ser flexível, oferecendo suporte tanto para execu
 
 ### Opção 1: Execução via Docker (Recomendado para Homologação)
 
-> ⚠️ A imagem Docker atual builda a versão CLI original (v1.2). A atualização do `docker-compose.yml`/`Dockerfile` para subir o servidor web (Uvicorn) está prevista para a Sprint 4 do cronograma.
+A partir da Sprint 4, a imagem Docker sobe a **Web Engine** (FastAPI/Uvicorn), não mais a CLI original. O banco e as tabelas são criados automaticamente no startup do servidor.
 
 O projeto possui suporte nativo a contêineres com acoplamento direto à interface de rede física (*host networking mode*), permitindo que o Scapy interaja com o tráfego real por dentro do contêiner.
 
-Para buildar a imagem e disparar a aplicação, execute na raiz do projeto:
+Para buildar a imagem e subir a aplicação, execute na raiz do projeto:
 
 ```
-sudo docker-compose up --build
+docker compose up --build
 ```
+
+> No Linux, pode ser necessário `sudo` dependendo da configuração do Docker. No Windows, **não** use `sudo` — o Docker Desktop já roda com os privilégios necessários.
+
+Crie o primeiro usuário admin dentro do contêiner (apenas na primeira vez, ou se o `netguard.db` ainda não existir):
+
+```
+docker compose exec netguard python auth.py criar_admin
+```
+
+**⚠️ Limitação conhecida no Windows:** o Docker Desktop no Windows roda sobre uma camada de virtualização (WSL2). O `network_mode: host` garante que o servidor web funcione normalmente (login, dashboard, banco de dados), mas o Scapy não consegue acesso de baixo nível (camada 2) à placa de rede física de dentro do contêiner nesse ambiente — por isso **a varredura ARP/porta e o sniffer não retornam resultados confiáveis via Docker no Windows**, mesmo com a página funcionando. Foi validado nesta Sprint que o modo nativo (Opção 2, abaixo) não tem essa limitação e deve ser usado para demonstrar essas funcionalidades no Windows.
+
+**Linux nativo (sem WSL2 no meio):** por não ter essa camada extra de virtualização, o container Docker rodando em um Linux nativo tem acesso direto à placa de rede física da mesma forma que o modo nativo, então a expectativa é que a varredura e o sniffer funcionem normalmente ali também. Essa homologação em Linux ainda está pendente de validação prática (nenhuma máquina Linux disponível neste ciclo) e fica como item de acompanhamento para a próxima iteração.
 
 ---
 
@@ -117,7 +129,7 @@ sudo ./venv/bin/python main.py
 
 ## 🌐 Web Engine (Projeto 2)
 
-A evolução para plataforma web expõe as mesmas capacidades de auditoria através de uma API (FastAPI) e um front-end web completo, com persistência em banco de dados e autenticação. Progresso atual: **Sprint 2 e Sprint 3 concluídas** (banco de dados, autenticação, motor de varredura migrado para rotas web, e interface web completa — varredura, dispositivos, relatórios e sniffer ao vivo).
+A evolução para plataforma web expõe as mesmas capacidades de auditoria através de uma API (FastAPI) e um front-end web completo, com persistência em banco de dados e autenticação. Progresso atual: **Sprint 2, Sprint 3 e parte da Sprint 4 concluídas** (banco de dados, autenticação, motor de varredura migrado para rotas web, interface web completa — varredura, dispositivos, relatórios e sniffer ao vivo — e Docker adaptado para subir a Web Engine, testado no Windows com testes de segurança de ponta a ponta validados).
 
 ### Configurar o banco de dados
 
@@ -188,6 +200,19 @@ A documentação interativa da API (Swagger) continua disponível em `http://127
 
 ---
 
+## 🔒 Testes de Segurança (Sprint 4)
+
+Validações realizadas de ponta a ponta sobre a Web Engine:
+
+- Acesso a páginas protegidas (`/painel` e derivadas) sem login redireciona automaticamente para `/login`
+- Rotas de API protegidas (`/devices`, `/reports`, `/scan`) recusam acesso sem token, retornando `401 Unauthorized`
+- Tentativa de login com senha incorreta retorna mensagem genérica ("Usuário ou senha incorretos"), sem indicar qual campo está errado
+- Senhas nunca são armazenadas em texto puro — confirmado hash bcrypt (`$2b$...`) na tabela `users`
+- Token JWT expira automaticamente após 60 minutos (`ACCESS_TOKEN_EXPIRE_MINUTES` em `auth.py`)
+- Endpoint WebSocket (`/ws/sniffer`) exige token válido via query string antes de aceitar a conexão
+
+---
+
 ## 🏗️ Arquitetura de Módulos Operacionais
 
 **Núcleo original (Projeto 1 — CLI):**
@@ -236,4 +261,4 @@ Ao iniciar a aplicação como Administrador, o operador terá acesso a um menu i
 - [x] **Sprint 1** — Especificação técnica, arquitetura, modelagem ER e planejamento
 - [x] **Sprint 2** — Back-end e autenticação: banco de dados (SQLModel), autenticação (bcrypt + JWT), servidor FastAPI, migração do `ScannerEngine` para rota web (agrupado por porta + MITRE + score de risco)
 - [x] **Sprint 3** — Front-end responsivo (Bootstrap/Jinja2): tela de varredura com simulação visual (radar), dispositivos, relatórios e sniffer ao vivo (WebSocket), testado em desktop e mobile
-- [ ] **Sprint 4** — Integração Docker adaptada para a Web Engine, homologação multiplataforma (Windows/Linux) e testes de segurança de ponta a ponta
+- [~] **Sprint 4** — Docker adaptado para subir a Web Engine (concluído e testado no Windows, com limitação de rede documentada); testes de segurança de ponta a ponta (concluído); homologação em Linux nativo (pendente — sem ambiente Linux disponível neste ciclo, fica para a próxima iteração)
