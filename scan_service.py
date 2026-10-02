@@ -9,7 +9,7 @@ agora mostra por porta (não por dispositivo), com a correlação MITRE ATT&CK q
 o reports.py já calculava, mais um score de risco agregado.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 import ipaddress
 import logging
 from typing import List, Dict, Any
@@ -94,14 +94,14 @@ def run_scan_and_persist(target_range: str, session: Session) -> Dict[str, Any]:
         if existing:
             existing.ip_address = dto.ip
             existing.vendor = vendor
-            existing.last_seen = datetime.utcnow()
+            existing.last_seen = datetime.now(timezone.utc)
             session.add(existing)
         else:
             session.add(Device(
                 ip_address=dto.ip,
                 mac_address=dto.mac,
                 vendor=vendor,
-                last_seen=datetime.utcnow(),
+                last_seen=datetime.now(timezone.utc),
             ))
 
         open_ports = engine.port_scan(dto.ip)
@@ -153,7 +153,7 @@ def run_scan_and_persist(target_range: str, session: Session) -> Dict[str, Any]:
         target_ip=target_range,
         open_ports=open_ports_payload,
         mitre_tactics=mitre_payload,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     session.add(scan_report)
     session.commit()

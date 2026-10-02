@@ -3,13 +3,15 @@ version: '3.8'
 services:
   netguard:
     build: .
-    image: netguard-cli:v1.0
+    image: netguard-web:v2.0
     container_name: netguard_container
-    # Compartilha a placa de rede física do seu PC com o contêiner
+    # Compartilha a placa de rede física do host com o contêiner —
+    # necessário para o Scapy (ARP scan e sniffer) enxergar o tráfego real.
     network_mode: "host"
-    # Dá permissão de Administrador (Root) para o contêiner fazer o Sniffer e varredura ARP
+    # Permissão de administrador (root) no contêiner, exigida pelo
+    # Scapy para varredura ARP/porta e captura de pacotes.
     privileged: true
-    stdin_open: true 
-    tty: true        
+    stdin_open: true
+    tty: true
     volumes:
       - .:/app

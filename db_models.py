@@ -1,7 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
 from sqlmodel import SQLModel, Field, Column, JSON
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class User(SQLModel, table=True):
@@ -10,8 +14,8 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True)
     hashed_password: str
-    role: str = Field(default="user")  # ex: "admin" ou "user"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    role: str = Field(default="user")
+    created_at: datetime = Field(default_factory=_utc_now)
 
 
 class Device(SQLModel, table=True):
@@ -21,7 +25,7 @@ class Device(SQLModel, table=True):
     ip_address: str = Field(index=True)
     mac_address: str = Field(index=True)
     vendor: Optional[str] = Field(default="Desconhecido")
-    last_seen: datetime = Field(default_factory=datetime.utcnow)
+    last_seen: datetime = Field(default_factory=_utc_now)
 
 
 class ScanReport(SQLModel, table=True):
@@ -31,7 +35,7 @@ class ScanReport(SQLModel, table=True):
     target_ip: str = Field(index=True)
     open_ports: List[Dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     mitre_tactics: List[Dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utc_now)
 
 
 class SnifferLog(SQLModel, table=True):
@@ -42,4 +46,4 @@ class SnifferLog(SQLModel, table=True):
     destination_ip: str
     protocol: str
     alert_type: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=_utc_now)
